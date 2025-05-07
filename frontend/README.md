@@ -1,79 +1,36 @@
-# 🔥 Matrix Terminal Frontend 🔥
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Welcome to the coolest terminal on the web! This Matrix-inspired interface lets you interact with the FastAPI backend in style. Just like Neo, you'll feel like a hacker while chatting with AI.
+## Getting Started
 
-## 🚀 Features
-
-- **Matrix Rain Effect**: Feel like you're in the digital realm with our authentic green Matrix code rain
-- **Terminal Interface**: Type commands to interact with the backend API
-- **AI Chat**: Talk to an AI assistant with streaming responses (requires OpenAI API key)
-- **Secure Password Fields**: Enter sensitive info with hidden characters (for API keys)
-- **Responsive Design**: Looks awesome on any device
-
-## 🛠️ Getting Started
-
-### Prerequisites
-
-- Node.js 18+ (LTS version recommended)
-- npm or yarn
-
-### Installation
+First, run the development server:
 
 ```bash
-# Clone the repo (if you haven't already)
-git clone <your-repo-url>
-cd your-project-name/frontend
-
-# Install dependencies
-npm install
-```
-
-### Running Locally
-
-```bash
-# Start the development server
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser and watch the Matrix come alive!
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-### Available Commands
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-When the Matrix Terminal loads, you can use these commands:
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-```
-health                - Check API health
-chat <message>        - Send a message to the AI
-setkey <api_key>      - Set your OpenAI API key
-clear                 - Clear the terminal
-help                  - Show this help message
-```
+## Learn More
 
-## 🚢 Deployment
+To learn more about Next.js, take a look at the following resources:
 
-This frontend is designed to be deployed on Vercel alongside the FastAPI backend.
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-```bash
-# Deploy to production
-vercel --prod
-```
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-## 🔮 Environment Variables
+## Deploy on Vercel
 
-Create a `.env.local` file in the root directory with:
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-```
-NEXT_PUBLIC_API_BASE_URL=/api
-```
-
-For production, set this up in your Vercel environment variables.
-
-## 🧪 Tech Stack
-
-- **Next.js**: React framework with server components
-- **TypeScript**: For type safety and better developer experience
-- **Tailwind CSS**: For styling
-- **xterm.js**: For terminal emulation
-- **Axios**: For API requests
-
-Hack the planet! 🌐
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
