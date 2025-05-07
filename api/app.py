@@ -22,20 +22,33 @@ app.add_middleware(
     allow_headers=["*"],  # Allows all headers in requests
 )
 
+# Get the OpenAI API key from environment variables if available
+SERVER_API_KEY = os.environ.get("OPENAI_API_KEY")
+
 # Define the data model for chat requests using Pydantic
 # This ensures incoming request data is properly validated
 class ChatRequest(BaseModel):
     developer_message: str  # Message from the developer/system
     user_message: str      # Message from the user
     model: Optional[str] = "gpt-4.1-mini"  # Optional model selection with default
-    api_key: str          # OpenAI API key for authentication
+    api_key: Optional[str] = None  # OpenAI API key for authentication, now optional
 
 # Define the main chat endpoint that handles POST requests
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     try:
-        # Initialize OpenAI client with the provided API key
-        client = OpenAI(api_key=request.api_key)
+        # Use server API key if available and no user key provided
+        api_key = request.api_key if request.api_key else SERVER_API_KEY
+        
+        # Check if we have an API key
+        if not api_key:
+            raise HTTPException(
+                status_code=400, 
+                detail="API key is required. Either set OPENAI_API_KEY environment variable or provide api_key in request."
+            )
+        
+        # Initialize OpenAI client with the API key
+        client = OpenAI(api_key=api_key)
         
         # Create an async generator function for streaming responses
         async def generate():
@@ -64,7 +77,7 @@ async def chat(request: ChatRequest):
 # Define a health check endpoint to verify API status
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "ok", "server_api_key_set": SERVER_API_KEY is not None}
 
 # Entry point for running the application directly
 if __name__ == "__main__":

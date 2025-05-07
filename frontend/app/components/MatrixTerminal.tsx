@@ -21,6 +21,8 @@ export default function MatrixTerminal() {
   const [apiKey, setApiKey] = useState<string>('');
   const [inputBuffer, setInputBuffer] = useState<string>('');
   const [isPasswordMode, setIsPasswordMode] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const fitAddonRef = useRef<FitAddon | null>(null);
 
   // Function to handle command execution
   const handleCommand = useCallback(async (command: string) => {
@@ -37,6 +39,13 @@ export default function MatrixTerminal() {
           term.write('\x1b[33mChecking API health...\x1b[0m\r\n');
           const response = await axios.get(`${API_BASE_URL}/health`);
           term.writeln(`\x1b[32mAPI Status: ${JSON.stringify(response.data)}\x1b[0m`);
+          
+          // Check if server API key is set
+          if (response.data.server_api_key_set) {
+            term.writeln('\x1b[32mServer API key is configured. You can use chat without setting your own key.\x1b[0m');
+          } else {
+            term.writeln('\x1b[33mNo server API key detected. You will need to set your own key with the setkey command.\x1b[0m');
+          }
         } catch (error) {
           term.writeln(`\x1b[31mError: ${error instanceof Error ? error.message : 'Unknown error'}\x1b[0m`);
         }
@@ -44,9 +53,20 @@ export default function MatrixTerminal() {
         
       case 'chat':
         if (!apiKey) {
-          term.writeln('\x1b[31mError: API key not set. Use "setkey <your_api_key>" first.\x1b[0m');
-          break;
+          try {
+            // Check if server has API key
+            const healthCheck = await axios.get(`${API_BASE_URL}/health`);
+            if (!healthCheck.data.server_api_key_set) {
+              term.writeln('\x1b[31mError: API key not set. Use "setkey <your_api_key>" first.\x1b[0m');
+              break;
+            }
+            // Server has API key, can proceed
+          } catch (error) {
+            term.writeln('\x1b[31mError checking server status. Use "setkey <your_api_key>" to set your own key.\x1b[0m');
+            break;
+          }
         }
+        
         if (!args) {
           term.writeln('\x1b[31mError: Message required. Usage: chat <message>\x1b[0m');
           break;
@@ -60,7 +80,7 @@ export default function MatrixTerminal() {
             {
               developer_message: "You are an AI assistant in a Matrix-style terminal. Keep responses concise and slightly dramatic.",
               user_message: args,
-              api_key: apiKey
+              api_key: apiKey // This will be undefined if using server key
             },
             {
               responseType: 'stream'
@@ -96,7 +116,7 @@ export default function MatrixTerminal() {
         
       case 'help':
         term.writeln('\x1b[32mAvailable commands:\x1b[0m');
-        term.writeln('\x1b[32m  health                - Check API health\x1b[0m');
+        term.writeln('\x1b[32m  health                - Check API health and key status\x1b[0m');
         term.writeln('\x1b[32m  chat <message>        - Send a message to the AI\x1b[0m');
         term.writeln('\x1b[32m  setkey <api_key>      - Set your OpenAI API key\x1b[0m');
         term.writeln('\x1b[32m  clear                 - Clear the terminal\x1b[0m');
@@ -125,8 +145,10 @@ export default function MatrixTerminal() {
       'Welcome to the Matrix Terminal Interface',
       'Connected to FastAPI Backend at ' + API_BASE_URL,
       '',
+      'Type "health" to check connection and API key status',
+      '',
       'Available commands:',
-      '  health                - Check API health',
+      '  health                - Check API health and key status',
       '  chat <message>        - Send a message to the AI',
       '  setkey <api_key>      - Set your OpenAI API key',
       '  clear                 - Clear the terminal',
@@ -147,91 +169,126 @@ export default function MatrixTerminal() {
       }
     }, 100);
   }, []);
+  
+  // Register client-side only
+  useEffect(() => {
+    setIsMounted(true);
+    
+    // Cleanup function
+    return () => {
+      if (term) {
+        term.dispose();
+      }
+      setIsMounted(false);
+    };
+  }, []);
 
   // Initialize terminal on component mount
   useEffect(() => {
-    if (!terminalRef.current) return;
+    if (!isMounted || !terminalRef.current) return;
     
     // Clean up any existing terminal
     if (term) {
       term.dispose();
     }
     
-    // Create new terminal with Matrix styling
-    const newTerm = new Terminal({
-      cursorBlink: true,
-      fontSize: 16,
-      fontFamily: 'Courier New, monospace',
-      theme: {
-        background: MATRIX_BG,
-        foreground: MATRIX_GREEN,
-        cursor: MATRIX_GREEN,
-        selectionBackground: MATRIX_GREEN,
-        selectionForeground: MATRIX_BG,
-      },
-      allowTransparency: true,
-    });
-    
-    // Add addons
-    const fitAddon = new FitAddon();
-    newTerm.loadAddon(fitAddon);
-    newTerm.loadAddon(new WebLinksAddon());
-    
-    // Open terminal in the container
-    newTerm.open(terminalRef.current);
-    fitAddon.fit();
-    
-    // Handle window resize
-    const handleResize = () => fitAddon.fit();
-    window.addEventListener('resize', handleResize);
-    
-    // Set up key event handlers
-    newTerm.onKey(({ key, domEvent }) => {
-      // Handle Enter key
-      if (domEvent.keyCode === 13) { // Enter key
-        newTerm.write('\r\n');
-        handleCommand(inputBuffer);
-        setInputBuffer('');
-        return;
-      }
+    try {
+      // Create new terminal with Matrix styling
+      const newTerm = new Terminal({
+        cursorBlink: true,
+        fontSize: 16,
+        fontFamily: 'Courier New, monospace',
+        theme: {
+          background: MATRIX_BG,
+          foreground: MATRIX_GREEN,
+          cursor: MATRIX_GREEN,
+          selectionBackground: MATRIX_GREEN,
+          selectionForeground: MATRIX_BG,
+        },
+        allowTransparency: true,
+      });
       
-      // Handle Backspace
-      if (domEvent.keyCode === 8) {
-        if (inputBuffer.length > 0) {
-          setInputBuffer(prev => prev.slice(0, -1));
-          newTerm.write('\b \b'); // Erase the character
+      // Add addons
+      const fitAddon = new FitAddon();
+      fitAddonRef.current = fitAddon;
+      newTerm.loadAddon(fitAddon);
+      newTerm.loadAddon(new WebLinksAddon());
+      
+      // Open terminal in the container
+      newTerm.open(terminalRef.current);
+      
+      // Set up key event handlers
+      newTerm.onKey(({ key, domEvent }) => {
+        // Handle Enter key
+        if (domEvent.keyCode === 13) { // Enter key
+          newTerm.write('\r\n');
+          handleCommand(inputBuffer);
+          setInputBuffer('');
+          return;
         }
-        return;
-      }
-      
-      // Add character to input buffer
-      const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
-      if (printable) {
-        setInputBuffer(prev => prev + key);
         
-        // In password mode, show * instead of actual character
-        if (isPasswordMode) {
-          newTerm.write('*');
-        } else {
-          newTerm.write(key);
+        // Handle Backspace
+        if (domEvent.keyCode === 8) {
+          if (inputBuffer.length > 0) {
+            setInputBuffer(prev => prev.slice(0, -1));
+            newTerm.write('\b \b'); // Erase the character
+          }
+          return;
         }
-      }
-    });
-    
-    // Save terminal reference
-    setTerm(newTerm);
-    
-    // Display welcome message
-    setTimeout(() => {
-      displayWelcomeMessage(newTerm);
-    }, 100);
-    
-    // Cleanup
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      newTerm.dispose();
-    };
-  }, [displayWelcomeMessage, handleCommand, isPasswordMode]);
+        
+        // Add character to input buffer
+        const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
+        if (printable) {
+          setInputBuffer(prev => prev + key);
+          
+          // In password mode, show * instead of actual character
+          if (isPasswordMode) {
+            newTerm.write('*');
+          } else {
+            newTerm.write(key);
+          }
+        }
+      });
+      
+      // Save terminal reference
+      setTerm(newTerm);
+      
+      // Fit terminal to container
+      setTimeout(() => {
+        if (fitAddonRef.current) {
+          try {
+            fitAddonRef.current.fit();
+          } catch (e) {
+            console.error("Error fitting terminal:", e);
+          }
+        }
+        
+        // Display welcome message
+        displayWelcomeMessage(newTerm);
+      }, 100);
+      
+      // Handle window resize
+      const handleResize = () => {
+        if (fitAddonRef.current) {
+          try {
+            fitAddonRef.current.fit();
+          } catch (e) {
+            console.error("Error fitting terminal on resize:", e);
+          }
+        }
+      };
+      
+      window.addEventListener('resize', handleResize);
+      
+      // Cleanup
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        newTerm.dispose();
+      };
+    } catch (error) {
+      console.error("Error initializing terminal:", error);
+    }
+  }, [displayWelcomeMessage, handleCommand, isMounted, isPasswordMode, term]);
   
   // Matrix rain effect CSS
   const matrixStyle = {

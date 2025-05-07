@@ -119,6 +119,33 @@ While it is a bit counter-intuitive to set things up before jumping into vibe-co
 
 </details>
 
+<details>
+  <summary>🔑 Configuring Your OpenAI API Key</summary>
+
+The app requires an OpenAI API key to function. You have two options:
+
+### Option 1: Server-side API Key (Recommended)
+
+1. Go to your Vercel project dashboard
+2. Navigate to "Settings" > "Environment Variables"
+3. Add a new environment variable:
+   - NAME: `OPENAI_API_KEY`
+   - VALUE: Your actual OpenAI API key
+   - Select "Production" and "Preview" environments
+
+This way, your API key is securely stored on the server and not exposed to users.
+
+### Option 2: Client-side API Key (User provided)
+
+If you don't want to set a server-side key, users can provide their own:
+
+1. Start the Matrix Terminal application
+2. Use the `health` command to check if a server API key is configured
+3. If no server key is available, use `setkey your_openai_api_key` to set a client-side key
+4. Now use `chat Hello world!` to start chatting
+
+</details>
+
 ### 🎉 Congratulations! 
 
 You just deployed your first LLM-powered application! 🚀🚀🚀 Get on linkedin and post your results and experience! Make sure to tag us at @AIMakerspace!
@@ -128,14 +155,14 @@ Here's a template to get your post started!
 ```
 🚀🎉 Exciting News! 🎉🚀
 
-🏗️ Today, I'm thrilled to announce that I've successfully built and shipped my first-ever LLM using the powerful combination of , and the OpenAI API! 🖥️
+🏗️ Today, I'm thrilled to announce that I've successfully built and shipped my first-ever LLM using the powerful combination of , and the OpenAI API! 🖥️
 
 Check it out 👇
 [LINK TO APP]
 
 A big shoutout to the @AI Makerspace for all making this possible. Couldn't have done it without the incredible community there. 🤗🙏
 
-Looking forward to building with the community! 🙌✨ Here's to many more creations ahead! 🥂🎉
+Looking forward to building with the community! 🙌✨ Here's to many more creations ahead! 🥂🎉
 
 Who else is diving into the world of AI? Let's connect! 🌐💡
 
