@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from 'xterm-addon-web-links';
@@ -13,7 +13,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 // Matrix color theme
 const MATRIX_GREEN = '#00FF41';
 const MATRIX_BG = '#0D0208';
-const MATRIX_ERROR = '#FF0000';
+// const MATRIX_ERROR = '#FF0000'; // Keeping for future use but commented to avoid ESLint warning
 
 export default function MatrixTerminal() {
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -21,6 +21,132 @@ export default function MatrixTerminal() {
   const [apiKey, setApiKey] = useState<string>('');
   const [inputBuffer, setInputBuffer] = useState<string>('');
   const [isPasswordMode, setIsPasswordMode] = useState(false);
+
+  // Function to handle command execution
+  const handleCommand = useCallback(async (command: string) => {
+    if (!term) return;
+    
+    // Split command into parts
+    const parts = command.trim().split(' ');
+    const cmd = parts[0].toLowerCase();
+    const args = parts.slice(1).join(' ');
+    
+    switch (cmd) {
+      case 'health':
+        try {
+          term.write('\x1b[33mChecking API health...\x1b[0m\r\n');
+          const response = await axios.get(`${API_BASE_URL}/health`);
+          term.writeln(`\x1b[32mAPI Status: ${JSON.stringify(response.data)}\x1b[0m`);
+        } catch (error) {
+          term.writeln(`\x1b[31mError: ${error instanceof Error ? error.message : 'Unknown error'}\x1b[0m`);
+        }
+        break;
+        
+      case 'chat':
+        if (!apiKey) {
+          term.writeln('\x1b[31mError: API key not set. Use "setkey <your_api_key>" first.\x1b[0m');
+          break;
+        }
+        if (!args) {
+          term.writeln('\x1b[31mError: Message required. Usage: chat <message>\x1b[0m');
+          break;
+        }
+        try {
+          term.write('\x1b[33mSending message to AI...\x1b[0m\r\n');
+          
+          // Make streaming request to the API
+          const response = await axios.post(
+            `${API_BASE_URL}/chat`, 
+            {
+              developer_message: "You are an AI assistant in a Matrix-style terminal. Keep responses concise and slightly dramatic.",
+              user_message: args,
+              api_key: apiKey
+            },
+            {
+              responseType: 'stream'
+            }
+          );
+          
+          // Handle streaming response
+          for await (const chunk of response.data) {
+            const text = new TextDecoder().decode(chunk);
+            term.write('\x1b[32m' + text + '\x1b[0m');
+          }
+          term.write('\r\n');
+        } catch (error) {
+          term.writeln(`\x1b[31mError: ${error instanceof Error ? error.message : 'Unknown error'}\x1b[0m`);
+        }
+        break;
+        
+      case 'setkey':
+        setIsPasswordMode(true);
+        if (!args) {
+          term.writeln('\x1b[31mError: API key required. Usage: setkey <your_api_key>\x1b[0m');
+          setIsPasswordMode(false);
+          break;
+        }
+        setApiKey(args);
+        term.writeln('\x1b[32mAPI key set successfully.\x1b[0m');
+        setIsPasswordMode(false);
+        break;
+        
+      case 'clear':
+        term.clear();
+        break;
+        
+      case 'help':
+        term.writeln('\x1b[32mAvailable commands:\x1b[0m');
+        term.writeln('\x1b[32m  health                - Check API health\x1b[0m');
+        term.writeln('\x1b[32m  chat <message>        - Send a message to the AI\x1b[0m');
+        term.writeln('\x1b[32m  setkey <api_key>      - Set your OpenAI API key\x1b[0m');
+        term.writeln('\x1b[32m  clear                 - Clear the terminal\x1b[0m');
+        term.writeln('\x1b[32m  help                  - Show this help message\x1b[0m');
+        break;
+        
+      case '':
+        // Just a new line, do nothing
+        break;
+        
+      default:
+        term.writeln(`\x1b[31mCommand not recognized: ${cmd}\x1b[0m`);
+        term.writeln('\x1b[32mType "help" for available commands.\x1b[0m');
+    }
+    
+    // Show prompt again
+    term.write('\x1b[32m> \x1b[0m');
+  }, [term, apiKey]);
+  
+  // Function to display welcome message with Matrix-style typing effect
+  const displayWelcomeMessage = useCallback((terminal: Terminal) => {
+    const welcomeMessage = [
+      '█▀▄▀█ ▄▀█ ▀█▀ █▀█ █ ▀▄▀   ▀█▀ █▀▀ █▀█ █▀▄▀█ █ █▄░█ ▄▀█ █░░',
+      '█░▀░█ █▀█ ░█░ █▀▄ █ █░█   ░█░ ██▄ █▀▄ █░▀░█ █ █░▀█ █▀█ █▄▄',
+      '',
+      'Welcome to the Matrix Terminal Interface',
+      'Connected to FastAPI Backend at ' + API_BASE_URL,
+      '',
+      'Available commands:',
+      '  health                - Check API health',
+      '  chat <message>        - Send a message to the AI',
+      '  setkey <api_key>      - Set your OpenAI API key',
+      '  clear                 - Clear the terminal',
+      '  help                  - Show this help message',
+      '',
+      'Type a command to begin...',
+      '',
+    ];
+    
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < welcomeMessage.length) {
+        terminal.writeln('\x1b[32m' + welcomeMessage[i] + '\x1b[0m');
+        i++;
+      } else {
+        clearInterval(interval);
+        terminal.write('\x1b[32m> \x1b[0m');
+      }
+    }, 100);
+  }, []);
 
   // Initialize terminal on component mount
   useEffect(() => {
@@ -72,7 +198,7 @@ export default function MatrixTerminal() {
       // Handle Backspace
       if (domEvent.keyCode === 8) {
         if (inputBuffer.length > 0) {
-          setInputBuffer(inputBuffer.slice(0, -1));
+          setInputBuffer(prev => prev.slice(0, -1));
           newTerm.write('\b \b'); // Erase the character
         }
         return;
@@ -81,7 +207,7 @@ export default function MatrixTerminal() {
       // Add character to input buffer
       const printable = !domEvent.altKey && !domEvent.ctrlKey && !domEvent.metaKey;
       if (printable) {
-        setInputBuffer(inputBuffer + key);
+        setInputBuffer(prev => prev + key);
         
         // In password mode, show * instead of actual character
         if (isPasswordMode) {
@@ -105,135 +231,7 @@ export default function MatrixTerminal() {
       window.removeEventListener('resize', handleResize);
       newTerm.dispose();
     };
-  }, []);
-  
-  // Function to display welcome message with Matrix-style typing effect
-  const displayWelcomeMessage = (terminal: Terminal) => {
-    const welcomeMessage = [
-      '█▀▄▀█ ▄▀█ ▀█▀ █▀█ █ ▀▄▀   ▀█▀ █▀▀ █▀█ █▀▄▀█ █ █▄░█ ▄▀█ █░░',
-      '█░▀░█ █▀█ ░█░ █▀▄ █ █░█   ░█░ ██▄ █▀▄ █░▀░█ █ █░▀█ █▀█ █▄▄',
-      '',
-      'Welcome to the Matrix Terminal Interface',
-      'Connected to FastAPI Backend at ' + API_BASE_URL,
-      '',
-      'Available commands:',
-      '  health                - Check API health',
-      '  chat <message>        - Send a message to the AI',
-      '  setkey <api_key>      - Set your OpenAI API key',
-      '  clear                 - Clear the terminal',
-      '  help                  - Show this help message',
-      '',
-      'Type a command to begin...',
-      '',
-    ];
-    
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i < welcomeMessage.length) {
-        terminal.writeln('\x1b[32m' + welcomeMessage[i] + '\x1b[0m');
-        i++;
-      } else {
-        clearInterval(interval);
-        terminal.write('\x1b[32m> \x1b[0m');
-      }
-    }, 100);
-  };
-  
-  // Function to handle command execution
-  const handleCommand = async (command: string) => {
-    if (!term) return;
-    
-    // Split command into parts
-    const parts = command.trim().split(' ');
-    const cmd = parts[0].toLowerCase();
-    const args = parts.slice(1).join(' ');
-    
-    switch (cmd) {
-      case 'health':
-        try {
-          term.write('\x1b[33mChecking API health...\x1b[0m\r\n');
-          const response = await axios.get(`${API_BASE_URL}/health`);
-          term.writeln(`\x1b[32mAPI Status: ${JSON.stringify(response.data)}\x1b[0m`);
-        } catch (error) {
-          term.writeln(`\x1b[31mError: ${error instanceof Error ? error.message : 'Unknown error'}\x1b[0m`);
-        }
-        break;
-        
-      case 'chat':
-        if (!apiKey) {
-          term.writeln('\x1b[31mError: API key not set. Use "setkey <your_api_key>" first.\x1b[0m');
-          break;
-        }
-        if (!args) {
-          term.writeln('\x1b[31mError: Message required. Usage: chat <message>\x1b[0m');
-          break;
-        }
-        try {
-          term.write('\x1b[33mSending message to AI...\x1b[0m\r\n');
-          
-          // Make streaming request to the API
-          const response = await axios.post(
-            `${API_BASE_URL}/chat`, 
-            {
-              developer_message: "You are an AI assistant in a Matrix-style terminal. Keep responses concise and slightly dramatic.",
-              user_message: args,
-              api_key: apiKey
-            },
-            {
-              responseType: 'stream'
-            }
-          );
-          
-          // Handle streaming response
-          let responseText = '';
-          for await (const chunk of response.data) {
-            const text = new TextDecoder().decode(chunk);
-            responseText += text;
-            term.write('\x1b[32m' + text + '\x1b[0m');
-          }
-          term.write('\r\n');
-        } catch (error) {
-          term.writeln(`\x1b[31mError: ${error instanceof Error ? error.message : 'Unknown error'}\x1b[0m`);
-        }
-        break;
-        
-      case 'setkey':
-        setIsPasswordMode(true);
-        if (!args) {
-          term.writeln('\x1b[31mError: API key required. Usage: setkey <your_api_key>\x1b[0m');
-          setIsPasswordMode(false);
-          break;
-        }
-        setApiKey(args);
-        term.writeln('\x1b[32mAPI key set successfully.\x1b[0m');
-        setIsPasswordMode(false);
-        break;
-        
-      case 'clear':
-        term.clear();
-        break;
-        
-      case 'help':
-        term.writeln('\x1b[32mAvailable commands:\x1b[0m');
-        term.writeln('\x1b[32m  health                - Check API health\x1b[0m');
-        term.writeln('\x1b[32m  chat <message>        - Send a message to the AI\x1b[0m');
-        term.writeln('\x1b[32m  setkey <api_key>      - Set your OpenAI API key\x1b[0m');
-        term.writeln('\x1b[32m  clear                 - Clear the terminal\x1b[0m');
-        term.writeln('\x1b[32m  help                  - Show this help message\x1b[0m');
-        break;
-        
-      case '':
-        // Just a new line, do nothing
-        break;
-        
-      default:
-        term.writeln(`\x1b[31mCommand not recognized: ${cmd}\x1b[0m`);
-        term.writeln('\x1b[32mType "help" for available commands.\x1b[0m');
-    }
-    
-    // Show prompt again
-    term.write('\x1b[32m> \x1b[0m');
-  };
+  }, [displayWelcomeMessage, handleCommand, isPasswordMode]);
   
   // Matrix rain effect CSS
   const matrixStyle = {

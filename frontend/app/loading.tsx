@@ -1,3 +1,5 @@
+'use client';
+
 export default function Loading() {
   return (
     <div className="h-screen w-screen flex flex-col items-center justify-center bg-black">

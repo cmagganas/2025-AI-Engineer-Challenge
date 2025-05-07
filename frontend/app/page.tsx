@@ -1,3 +1,5 @@
+'use client';
+
 import dynamic from 'next/dynamic';
 
 // Use dynamic import with SSR disabled for the components that use browser APIs
