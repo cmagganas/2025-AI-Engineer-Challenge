@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { chat, ChatRequest } from "@/lib/api";
+import dynamic from "next/dynamic";
+
+const MatrixMiniRain = dynamic(() => import("@/components/MatrixMiniRain"));
 
 /**
  * MatrixTerminal – a fun terminal-like chat interface that streams text from the
@@ -17,12 +20,19 @@ export default function MatrixTerminal() {
     'Your name is Agent Smith. Greet the user, Neo from the movie the Matrix, with a "Hello Mr. Anderson..."'
   );
   const [userMessage, setUserMessage] = useState<string>("");
-  const [apiKey, setApiKey] = useState<string>("");
+  const [apiKey, setApiKey] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("openai_api_key") ?? "";
+    }
+    return "";
+  });
 
   // Streaming output
   const [output, setOutput] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const outputRef = useRef<HTMLDivElement>(null);
+
+  const [showIntro, setShowIntro] = useState<boolean>(true);
 
   // Auto-scroll to bottom when output grows
   useEffect(() => {
@@ -30,6 +40,15 @@ export default function MatrixTerminal() {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [output]);
+
+  // Keep apiKey in localStorage to persist across reloads
+  useEffect(() => {
+    if (apiKey) {
+      localStorage.setItem("openai_api_key", apiKey);
+    } else {
+      localStorage.removeItem("openai_api_key");
+    }
+  }, [apiKey]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -104,7 +123,10 @@ export default function MatrixTerminal() {
       </div>
 
       {/* Box 2: Terminal & Input */}
-      <div className="bg-black rounded-md border border-green-700 shadow-inner flex flex-col">
+      <div className="bg-black rounded-md border border-green-700 shadow-inner flex flex-col relative overflow-hidden">
+        {showIntro && (
+          <MatrixMiniRain onDone={() => setShowIntro(false)} />
+        )}
         {/* Terminal window */}
         <div
           ref={outputRef}
