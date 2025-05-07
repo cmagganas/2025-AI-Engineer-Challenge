@@ -35,7 +35,7 @@ export default function MatrixRain() {
     const symbols = "01ﾊﾐﾑﾒﾓｩ｣ﾘｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄｶ".split("");
     const fontSize = 16;
     const columns = () => Math.floor(canvas.width / fontSize);
-    let drops: number[] = Array(columns()).fill(0);
+    const drops: number[] = Array(columns()).fill(0);
 
     const step = () => {
       // Fade the canvas slightly to create trail effect

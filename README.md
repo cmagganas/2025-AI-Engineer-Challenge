@@ -119,25 +119,6 @@ While it is a bit counter-intuitive to set things up before jumping into vibe-co
 
 </details>
 
-### 🎉 Congratulations! 
+## Matrix Themed Frontend
 
-You just deployed your first LLM-powered application! 🚀🚀🚀 Get on linkedin and post your results and experience! Make sure to tag us at @AIMakerspace!
-
-Here's a template to get your post started!
-
-```
-🚀🎉 Exciting News! 🎉🚀
-
-🏗️ Today, I'm thrilled to announce that I've successfully built and shipped my first-ever LLM using the powerful combination of , and the OpenAI API! 🖥️
-
-Check it out 👇
-[LINK TO APP]
-
-A big shoutout to the @AI Makerspace for all making this possible. Couldn't have done it without the incredible community there. 🤗🙏
-
-Looking forward to building with the community! 🙌✨ Here's to many more creations ahead! 🥂🎉
-
-Who else is diving into the world of AI? Let's connect! 🌐💡
-
-#FirstLLMApp 
-```
+[![Matrix Demo Screenshot](frontend/public/Hacking%20the%20Matrix.png)](https://2025-ai-engineer-challenge.vercel.app/)

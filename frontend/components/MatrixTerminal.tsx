@@ -88,8 +88,9 @@ export default function MatrixTerminal() {
           setOutput((prev) => prev + decoder.decode(value));
         }
       }
-    } catch (err: any) {
-      setOutput(`\n[ERROR] ${err.message ?? err}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setOutput(`\n[ERROR] ${msg}`);
     } finally {
       setIsLoading(false);
       setUserMessage("");

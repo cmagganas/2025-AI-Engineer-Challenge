@@ -35,7 +35,7 @@ export default function MatrixMiniRain({ onDone, durationMs = 2500 }: MiniRainPr
     const symbols = "01ﾊﾐﾑﾒﾓｩ｣ﾘｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄｶ".split("");
     const fontSize = 14;
     const columns = () => Math.floor(canvas.width / fontSize);
-    let drops: number[] = Array(columns()).fill(0);
+    const drops: number[] = Array(columns()).fill(0);
 
     const step = () => {
       ctx.fillStyle = "rgba(0,0,0,0.1)";
